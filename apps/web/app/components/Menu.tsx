@@ -11,13 +11,13 @@ export default function Menu({ onSelectMode }: MenuProps) {
       <div className="flex gap-8">
         <button
           onClick={() => onSelectMode('single')}
-          className="w-48 h-24 border-2 border-white bg-[#222] hover:bg-[#333] transition-all"
+          className="w-48 h-24 border-2 border-white bg-[#ff0000] hover:bg-[#333] transition-all"
         >
           SINGLE PLAYER
         </button>
         <button
           onClick={() => onSelectMode('multi')}
-          className="w-48 h-24 border-2 border-white bg-[#222] hover:bg-[#333] transition-all"
+          className="w-48 h-24 border-2 border-white bg-[#0000ff] hover:bg-[#333] transition-all"
         >
           TWO PLAYERS
         </button>
