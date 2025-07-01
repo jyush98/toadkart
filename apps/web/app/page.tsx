@@ -1,7 +1,7 @@
 'use client';
 
-import GameScreen from './components/GameScreen';
+import Screen from "./components/Screen";
 
 export default function Home() {
-  return <GameScreen />;
+  return <Screen />;
 }

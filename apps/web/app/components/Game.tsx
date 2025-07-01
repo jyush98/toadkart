@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Player from './Player';
 
-export default function GameScreen() {
+interface GameProps {
+  mode: 'single' | 'multi';
+}
+
+export default function Game({ mode }: GameProps) {
   const [coins, setCoins] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
