@@ -11,6 +11,7 @@ interface PlayerProps {
   screenWidth: number;
   side: 'left' | 'right';
   setPosition: (pos: { x: number; y: number }) => void;
+  stunned?: boolean;
 }
 
 export default function Player({
@@ -22,6 +23,7 @@ export default function Player({
   screenWidth,
   side,
   setPosition,
+  stunned = false,
 }: PlayerProps) {
   const SPEED = 20;
   const SPRITE_WIDTH = 48;
@@ -30,49 +32,45 @@ export default function Player({
   const leftMin = 0;
   const leftMax = screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER;
 
-  const [x, setX] = useState(0);
-  const [y, setY] = useState(0);
+  const [x, setX] = useState(initialX);
+  const [y, setY] = useState(initialY);
 
   useEffect(() => {
     setX(initialX);
     setY(initialY);
-    setPosition({ x: initialX, y: initialY });
-  }, [initialX, initialY, setPosition]);
+  }, [initialX, initialY]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      setX(prevX => {
-        const newX = e.key === 'a' || e.key === 'A'
-          ? Math.max(leftMin, prevX - SPEED)
-          : e.key === 'd' || e.key === 'D'
-          ? Math.min(leftMax, prevX + SPEED)
-          : prevX;
+      if (stunned) return;
 
-        setPosition({ x: newX, y });
-        return newX;
-      });
+      if (e.key === 'a' || e.key === 'A') {
+        setX(prevX => Math.max(leftMin, prevX - SPEED));
+      } else if (e.key === 'd' || e.key === 'D') {
+        setX(prevX => Math.min(leftMax, prevX + SPEED));
+      }
 
-      setY(prevY => {
-        const newY = e.key === 'w' || e.key === 'W'
-          ? Math.max(minY, prevY - SPEED)
-          : e.key === 's' || e.key === 'S'
-          ? Math.min(maxY, prevY + SPEED)
-          : prevY;
-
-        setPosition({ x, y: newY });
-        return newY;
-      });
+      if (e.key === 'w' || e.key === 'W') {
+        setY(prevY => Math.max(minY, prevY - SPEED));
+      } else if (e.key === 's' || e.key === 'S') {
+        setY(prevY => Math.min(maxY, prevY + SPEED));
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [minY, maxY, x, y, setPosition]);
+  }, [minY, maxY, leftMin, leftMax, stunned]);
+
+  useEffect(() => {
+    setPosition({ x, y });
+  }, [x, y, setPosition]);
 
   return (
     <img
       src={sprite}
       alt="Player"
-      className="absolute"
+      className={`absolute transition-transform duration-75 ${stunned ? 'opacity-50 grayscale' : ''
+        }`}
       style={{
         left: `${x}px`,
         top: `calc(50% + ${y}px)`,
