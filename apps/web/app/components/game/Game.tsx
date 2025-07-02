@@ -39,6 +39,8 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
   const [p1Hearts, setP1Hearts] = useState(3);
   const [p2Hearts, setP2Hearts] = useState(3);
+  const [p1Stunned, setP1Stunned] = useState(false);
+  const [p2Stunned, setP2Stunned] = useState(false);
   const [gameOver, setGameOver] = useState<null | 'p1' | 'p2'>(null);
   const [p1Wins, setP1Wins] = useState(0);
   const [p2Wins, setP2Wins] = useState(0);
@@ -95,7 +97,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         const y = Math.floor(Math.random() * (maxY - minY)) + minY;
         setP2Box({ x, y });
       }
-    }, 7000);
+    }, 3000); // every 3 seconds
 
     return () => clearInterval(interval);
   }, [p1Box, p2Box, p1Item, p2Item, screenWidth, minY, maxY]);
@@ -160,10 +162,14 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       if (p.type === 'shell') {
         if (p.direction === 'right' && isColliding(proj, player2)) {
           setP2Hearts(h => Math.max(h - 1, 0));
+          setP2Stunned(true);
+          setTimeout(() => setP2Stunned(false), 1000);
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (p.direction === 'left' && isColliding(proj, player1)) {
           setP1Hearts(h => Math.max(h - 1, 0));
+          setP1Stunned(true);
+          setTimeout(() => setP1Stunned(false), 1000);
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
       }
@@ -171,10 +177,14 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       if (p.type === 'banana' || p.type === 'banana_static') {
         if (p.owner !== 'p1' && isColliding(proj, player1)) {
           setP1Hearts(h => Math.max(h - 1, 0));
+          setP1Stunned(true);
+          setTimeout(() => setP1Stunned(false), 1000);
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (p.owner !== 'p2' && isColliding(proj, player2)) {
           setP2Hearts(h => Math.max(h - 1, 0));
+          setP2Stunned(true);
+          setTimeout(() => setP2Stunned(false), 1000);
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
       }
@@ -204,17 +214,13 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     setP2Box(null);
     setProjectiles([]);
     setGameOver(null);
-
-    // ✅ Re-focus the game container to capture keydown events again
-    setTimeout(() => {
-      containerRef.current?.focus();
-    }, 0);
+    setTimeout(() => containerRef.current?.focus(), 0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (gameOver) return;
 
-    if (e.key === 'f' && p1Item) {
+    if (e.key === 'f' && p1Item && !p1Stunned) {
       setProjectiles(prev => [
         ...prev,
         {
@@ -229,7 +235,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       setP1Item(null);
     }
 
-    if (e.key === '/' && p2Item) {
+    if (e.key === '/' && p2Item && !p2Stunned) {
       setProjectiles(prev => [
         ...prev,
         {
@@ -271,6 +277,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         screenWidth={screenWidth}
         side="left"
         setPosition={setP1Pos}
+        stunned={p1Stunned}
       />
 
       <Player2
@@ -282,6 +289,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         screenWidth={screenWidth}
         side="right"
         setPosition={setP2Pos}
+        stunned={p2Stunned}
       />
 
       {projectiles.map((p, i) => (
