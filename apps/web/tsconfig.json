@@ -8,9 +8,15 @@
     ],
     "baseUrl": "./src",
     "paths": {
-      "@/utils/*": ["utils/*"],
-      "@/components/*": ["components/*"],
-      "@/app/*": ["app/*"]
+      "@/utils/*": [
+        "utils/*"
+      ],
+      "@/components/*": [
+        "components/*"
+      ],
+      "@/app/*": [
+        "app/*"
+      ]
     }
   },
   "include": [
@@ -18,7 +24,8 @@
     "**/*.tsx",
     "next-env.d.ts",
     "next.config.js",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "tailwind.config.js"
   ],
   "exclude": [
     "node_modules"
