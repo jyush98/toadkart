@@ -40,6 +40,8 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
   const [p1Hearts, setP1Hearts] = useState(3);
   const [p2Hearts, setP2Hearts] = useState(3);
   const [gameOver, setGameOver] = useState<null | 'p1' | 'p2'>(null);
+  const [p1Wins, setP1Wins] = useState(0);
+  const [p2Wins, setP2Wins] = useState(0);
 
   const [p1Item, setP1Item] = useState<null | 'banana' | 'shell'>(null);
   const [p2Item, setP2Item] = useState<null | 'banana' | 'shell'>(null);
@@ -123,7 +125,8 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         prev
           .map(p => {
             if (p.type === 'shell') {
-              const newX = p.direction === 'right' ? p.x + 12 : p.x - 12;
+              const SHELL_SPEED = 24;
+              const newX = p.direction === 'right' ? p.x + SHELL_SPEED : p.x - SHELL_SPEED;
               const isOffscreen = newX < 0 || newX > screenWidth;
               return isOffscreen ? null : { ...p, x: newX };
             }
@@ -155,25 +158,21 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
       if (p.type === 'shell') {
         if (p.direction === 'right' && isColliding(proj, player2)) {
-          console.log('Shell hit Player 2!');
           setP2Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (p.direction === 'left' && isColliding(proj, player1)) {
-          console.log('Shell hit Player 1!');
           setP1Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
       }
 
-      if (p.type === 'banana_static') {
+      if (p.type === 'banana' || p.type === 'banana_static') {
         if (isColliding(proj, player1)) {
-          console.log('Player 1 slipped on banana!');
           setP1Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (isColliding(proj, player2)) {
-          console.log('Player 2 slipped on banana!');
           setP2Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
@@ -182,12 +181,29 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
   }, [projectiles, p1Pos, p2Pos]);
 
   useEffect(() => {
-    if (p1Hearts <= 0) setGameOver('p2');
-    if (p2Hearts <= 0) setGameOver('p1');
+    if (p1Hearts <= 0) {
+      setGameOver('p2');
+      setP2Wins(w => w + 1);
+    }
+    if (p2Hearts <= 0) {
+      setGameOver('p1');
+      setP1Wins(w => w + 1);
+    }
   }, [p1Hearts, p2Hearts]);
 
   const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
   const player2StartX = (screenWidth / 2 + EDGE_BUFFER + (screenWidth - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
+
+  const handleRestart = () => {
+    setP1Hearts(3);
+    setP2Hearts(3);
+    setP1Item(null);
+    setP2Item(null);
+    setP1Box(null);
+    setP2Box(null);
+    setProjectiles([]);
+    setGameOver(null);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (gameOver) return;
@@ -196,11 +212,11 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       setProjectiles(prev => [
         ...prev,
         {
-          x: p1Pos.x + 24,
+          x: p1Pos.x + 48, // Start banana ahead of player
           y: p1Pos.y,
           type: p1Item,
           direction: 'right',
-          startX: p1Pos.x + 24,
+          startX: p1Pos.x + 48,
         },
       ]);
       setP1Item(null);
@@ -210,11 +226,11 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       setProjectiles(prev => [
         ...prev,
         {
-          x: p2Pos.x,
+          x: p2Pos.x - 48, // Start banana ahead of player
           y: p2Pos.y,
           type: p2Item,
           direction: 'left',
-          startX: p2Pos.x,
+          startX: p2Pos.x - 48,
         },
       ]);
       setP2Item(null);
@@ -228,7 +244,13 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       onKeyDown={handleKeyDown}
       className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden outline-none"
     >
-      {gameOver && <GameOverScreen winner={gameOver} onReturnToMenu={onReturnToMenu} />}
+      {gameOver && (
+        <GameOverScreen
+          winner={gameOver}
+          onReturnToMenu={onReturnToMenu}
+          onRestart={handleRestart}
+        />
+      )}
 
       <Track />
 
@@ -254,15 +276,10 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         setPosition={setP2Pos}
       />
 
-      {/* Projectiles */}
       {projectiles.map((p, i) => (
         <img
           key={i}
-          src={
-            p.type === 'shell'
-              ? '/objects/green-shell.webp'
-              : '/objects/banana.png'
-          }
+          src={p.type === 'shell' ? '/objects/green-shell.webp' : '/objects/banana.png'}
           className="absolute"
           style={{
             left: `${p.x}px`,
@@ -275,7 +292,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         />
       ))}
 
-      {/* Item Boxes */}
       {p1Box && (
         <img
           src="/objects/item-box.png"
@@ -306,6 +322,10 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
           }}
         />
       )}
+
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-sm z-50">
+        Player 1 Wins: {p1Wins} &nbsp;&nbsp;|&nbsp;&nbsp; Player 2 Wins: {p2Wins}
+      </div>
 
       <HUD p1Hearts={p1Hearts} p2Hearts={p2Hearts} p1Item={p1Item} p2Item={p2Item} />
     </div>
