@@ -57,6 +57,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       type: 'banana' | 'shell' | 'banana_static';
       direction: 'left' | 'right';
       startX?: number;
+      owner: 'p1' | 'p2';
     }[]
   >([]);
 
@@ -168,11 +169,11 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       }
 
       if (p.type === 'banana' || p.type === 'banana_static') {
-        if (isColliding(proj, player1)) {
+        if (p.owner !== 'p1' && isColliding(proj, player1)) {
           setP1Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
-        if (isColliding(proj, player2)) {
+        if (p.owner !== 'p2' && isColliding(proj, player2)) {
           setP2Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
@@ -212,11 +213,12 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       setProjectiles(prev => [
         ...prev,
         {
-          x: p1Pos.x + 48, // Start banana ahead of player
+          x: p1Pos.x + 48,
           y: p1Pos.y,
           type: p1Item,
           direction: 'right',
           startX: p1Pos.x + 48,
+          owner: 'p1',
         },
       ]);
       setP1Item(null);
@@ -226,11 +228,12 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       setProjectiles(prev => [
         ...prev,
         {
-          x: p2Pos.x - 48, // Start banana ahead of player
+          x: p2Pos.x - 48,
           y: p2Pos.y,
           type: p2Item,
           direction: 'left',
           startX: p2Pos.x - 48,
+          owner: 'p2',
         },
       ]);
       setP2Item(null);
