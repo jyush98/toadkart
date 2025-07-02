@@ -16,36 +16,45 @@ interface GameProps {
 export default function Game({ mode, onReturnToMenu }: GameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [screenWidth, setScreenWidth] = useState(800); // default until measured
-  const [coins, setCoins] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
+  const [screenWidth, setScreenWidth] = useState(800);
   const [bgOffset, setBgOffset] = useState(0);
   const [scrollX, setScrollX] = useState(0);
   const [playerY, setPlayerY] = useState(0);
-
   const [minY, setMinY] = useState(0);
   const [maxY, setMaxY] = useState(0);
-
   const [gameOver, setGameOver] = useState(false);
   const [finalStats, setFinalStats] = useState<{ time: number; coins: number } | null>(null);
   const requestRef = useRef<number>(0);
 
-  const finishX = 4000;
-
   const SPRITE_WIDTH = 48;
   const EDGE_BUFFER = 4;
 
-  // Set clamping bounds and measure screen on mount
+  const finishX = 4000;
+
+  const [p1Item, setP1Item] = useState<null | 'banana' | 'shell'>(null);
+  const [p2Item, setP2Item] = useState<null | 'banana' | 'shell'>(null);
+  const [p1Box, setP1Box] = useState<{ x: number; y: number } | null>(null);
+  const [p2Box, setP2Box] = useState<{ x: number; y: number } | null>(null);
+
+  const [p1Pos, setP1Pos] = useState({ x: 0, y: 0 });
+  const [p2Pos, setP2Pos] = useState({ x: 0, y: 0 });
+
+  const [projectiles, setProjectiles] = useState<
+    { x: number; y: number; type: 'banana' | 'shell' | 'banana_static'; direction: 'left' | 'right' }[]
+  >([]);
+
+  const [elapsed, setElapsed] = useState(0);
+
+  // Setup
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
       setScreenWidth(container.offsetWidth);
+      container.focus(); // ⬅️ ensure key events work
     }
 
     const gameHeight = (50 * window.innerHeight) / 100;
-    const characterHeight = SPRITE_WIDTH;
-    const halfChar = characterHeight / 2;
-
+    const halfChar = SPRITE_WIDTH / 2;
     const trackTop = gameHeight * 0.8;
     const trackBottom = gameHeight;
 
@@ -55,64 +64,130 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
     setMinY(min);
     setMaxY(max);
-    setPlayerY(max); // Start at bottom edge
+    setPlayerY(max);
   }, []);
 
-  // Game loop
+  // Timer loop
   useEffect(() => {
     const start = performance.now();
-
     const update = (time: number) => {
-      if (gameOver) return;
-
       setElapsed(Math.floor((time - start) / 1000));
-      setBgOffset((prev) => (prev - 2) % 1000);
-
-      const playerX = 0.25 * screenWidth;
-      const finishScreenX = finishX - scrollX;
-
-      const playerSize = SPRITE_WIDTH;
-      const finishWidth = 32;
-
-      const isColliding =
-        Math.abs(playerX - finishScreenX) < (playerSize + finishWidth) / 2;
-
-      if (isColliding) {
-        setGameOver(true);
-        setFinalStats({ time: elapsed, coins });
-        cancelAnimationFrame(requestRef.current);
-        return;
-      }
-
       requestRef.current = requestAnimationFrame(update);
     };
-
     requestRef.current = requestAnimationFrame(update);
     return () => cancelAnimationFrame(requestRef.current);
-  }, [scrollX, elapsed, coins, gameOver, screenWidth]);
+  }, []);
 
-  const handlePlayAgain = () => {
-    setCoins(0);
-    setElapsed(0);
-    setBgOffset(0);
-    setScrollX(0);
-    setPlayerY(maxY);
-    setGameOver(false);
-    setFinalStats(null);
+  // Spawn item boxes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!p1Box && !p1Item) {
+        const x = Math.floor(Math.random() * (screenWidth / 2 - 64));
+        const y = Math.floor(Math.random() * (maxY - minY)) + minY;
+        setP1Box({ x, y });
+      }
+
+      if (!p2Box && !p2Item) {
+        const x = Math.floor(Math.random() * (screenWidth / 2 - 64)) + screenWidth / 2;
+        const y = Math.floor(Math.random() * (maxY - minY)) + minY;
+        setP2Box({ x, y });
+      }
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [p1Box, p2Box, p1Item, p2Item, screenWidth, minY, maxY]);
+
+  // Item pickup
+  useEffect(() => {
+    if (p1Box && !p1Item) {
+      const dx = Math.abs(p1Box.x - p1Pos.x);
+      const dy = Math.abs(p1Box.y - p1Pos.y);
+      if (dx < 40 && dy < 40) {
+        setP1Item(Math.random() < 0.5 ? 'banana' : 'shell');
+        setP1Box(null);
+      }
+    }
+
+    if (p2Box && !p2Item) {
+      const dx = Math.abs(p2Box.x - p2Pos.x);
+      const dy = Math.abs(p2Box.y - p2Pos.y);
+      if (dx < 40 && dy < 40) {
+        setP2Item(Math.random() < 0.5 ? 'banana' : 'shell');
+        setP2Box(null);
+      }
+    }
+  }, [p1Box, p2Box, p1Item, p2Item, p1Pos, p2Pos]);
+
+  // Animate projectiles
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProjectiles(prev =>
+        prev
+          .map(p => {
+            if (p.type === 'shell') {
+              const newX = p.direction === 'right' ? p.x + 12 : p.x - 12;
+              const isOffscreen = newX < 0 || newX > screenWidth;
+              return isOffscreen ? null : { ...p, x: newX };
+            }
+
+            if (p.type === 'banana') {
+              const dx = p.direction === 'right' ? 8 : -8;
+              const newX = p.x + dx;
+              const maxDist = screenWidth * 0.4;
+              return Math.abs(newX - p.x) >= maxDist
+                ? { ...p, type: 'banana_static' }
+                : { ...p, x: newX };
+            }
+
+            return p; // banana_static
+          })
+          .filter(Boolean) as typeof projectiles
+      );
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [screenWidth]);
+
+  // Throwing items
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'f' && p1Item) {
+      console.log('P1 threw', p1Item);
+      setProjectiles(prev => [
+        ...prev,
+        {
+          x: p1Pos.x + 24,
+          y: p1Pos.y,
+          type: p1Item,
+          direction: 'right',
+        },
+      ]);
+      setP1Item(null);
+    }
+
+    if (e.key === '/' && p2Item) {
+      console.log('P2 threw', p2Item);
+      setProjectiles(prev => [
+        ...prev,
+        {
+          x: p2Pos.x,
+          y: p2Pos.y,
+          type: p2Item,
+          direction: 'left',
+        },
+      ]);
+      setP2Item(null);
+    }
   };
 
-  const handleMainMenu = () => {
-    if (onReturnToMenu) onReturnToMenu();
-  };
-
-  // Compute X positions based on screen width
   const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
   const player2StartX = (screenWidth / 2 + EDGE_BUFFER + (screenWidth - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden outline-none"
     >
       <Track />
 
@@ -124,6 +199,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         initialY={playerY}
         screenWidth={screenWidth}
         side="left"
+        setPosition={setP1Pos}
       />
 
       <Player2
@@ -134,22 +210,54 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         initialY={playerY}
         screenWidth={screenWidth}
         side="right"
+        setPosition={setP2Pos}
       />
 
-      {scrollX >= 3000 && !gameOver && (
-        <FinishLine finishX={finishX} scrollX={scrollX} />
+      {/* Item Boxes */}
+      {p1Box && (
+        <div
+          className="absolute w-8 h-8 bg-yellow-400 border-2 border-white rounded-sm text-center leading-8 font-bold"
+          style={{
+            left: `${p1Box.x}px`,
+            top: `calc(50% + ${p1Box.y}px)`,
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+          }}
+        >
+          ❓
+        </div>
+      )}
+      {p2Box && (
+        <div
+          className="absolute w-8 h-8 bg-yellow-400 border-2 border-white rounded-sm text-center leading-8 font-bold"
+          style={{
+            left: `${p2Box.x}px`,
+            top: `calc(50% + ${p2Box.y}px)`,
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+          }}
+        >
+          ❓
+        </div>
       )}
 
-      <HUD coins={coins} elapsed={elapsed} />
+      {/* Projectiles */}
+      {projectiles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute text-2xl"
+          style={{
+            left: `${p.x}px`,
+            top: `calc(50% + ${p.y}px)`,
+            transform: 'translateY(-50%)',
+            zIndex: 15,
+          }}
+        >
+          {p.type === 'shell' ? '🟢' : '🍌'}
+        </div>
+      ))}
 
-      {gameOver && finalStats && (
-        <GameOverScreen
-          time={finalStats.time}
-          coins={finalStats.coins}
-          onPlayAgain={handlePlayAgain}
-          onMainMenu={handleMainMenu}
-        />
-      )}
+      <HUD p1Hearts={3} p2Hearts={3} p1Item={p1Item} p2Item={p2Item} />
     </div>
   );
 }

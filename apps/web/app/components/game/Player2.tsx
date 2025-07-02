@@ -10,9 +10,19 @@ interface PlayerProps {
   initialY: number;
   screenWidth: number;
   side: 'left' | 'right';
+  setPosition: (pos: { x: number; y: number }) => void;
 }
 
-export default function Player2({ sprite, minY, maxY, initialX, initialY, screenWidth }: PlayerProps) {
+export default function Player2({
+  sprite,
+  minY,
+  maxY,
+  initialX,
+  initialY,
+  screenWidth,
+  side,
+  setPosition,
+}: PlayerProps) {
   const SPEED = 20;
   const SPRITE_WIDTH = 48;
   const EDGE_BUFFER = 4;
@@ -23,30 +33,40 @@ export default function Player2({ sprite, minY, maxY, initialX, initialY, screen
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
 
-  // Set initial X/Y after Game.tsx loads them
   useEffect(() => {
     setX(initialX);
     setY(initialY);
-  }, [initialX, initialY]);
+    setPosition({ x: initialX, y: initialY });
+  }, [initialX, initialY, setPosition]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       setX(prevX => {
-        if (e.key === 'ArrowLeft') return Math.max(rightMin, prevX - SPEED);
-        if (e.key === 'ArrowRight') return Math.min(rightMax, prevX + SPEED);
-        return prevX;
+        const newX = e.key === 'ArrowLeft'
+          ? Math.max(rightMin, prevX - SPEED)
+          : e.key === 'ArrowRight'
+          ? Math.min(rightMax, prevX + SPEED)
+          : prevX;
+
+        setPosition({ x: newX, y });
+        return newX;
       });
 
       setY(prevY => {
-        if (e.key === 'ArrowUp') return Math.max(minY, prevY - SPEED);
-        if (e.key === 'ArrowDown') return Math.min(maxY, prevY + SPEED);
-        return prevY;
+        const newY = e.key === 'ArrowUp'
+          ? Math.max(minY, prevY - SPEED)
+          : e.key === 'ArrowDown'
+          ? Math.min(maxY, prevY + SPEED)
+          : prevY;
+
+        setPosition({ x, y: newY });
+        return newY;
       });
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [minY, maxY, rightMin, rightMax]);
+  }, [minY, maxY, x, y, setPosition]);
 
   return (
     <img
@@ -57,8 +77,8 @@ export default function Player2({ sprite, minY, maxY, initialX, initialY, screen
         left: `${x}px`,
         top: `calc(50% + ${y}px)`,
         transform: 'translateY(-50%) scaleX(-1)',
-        width: `${SPRITE_WIDTH}px`,
-        height: `${SPRITE_WIDTH}px`,
+        width: `48px`,
+        height: `48px`,
         zIndex: 20,
       }}
     />

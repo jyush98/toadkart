@@ -10,9 +10,19 @@ interface PlayerProps {
   initialY: number;
   screenWidth: number;
   side: 'left' | 'right';
+  setPosition: (pos: { x: number; y: number }) => void;
 }
 
-export default function Player({ sprite, minY, maxY, initialX, initialY, screenWidth }: PlayerProps) {
+export default function Player({
+  sprite,
+  minY,
+  maxY,
+  initialX,
+  initialY,
+  screenWidth,
+  side,
+  setPosition,
+}: PlayerProps) {
   const SPEED = 20;
   const SPRITE_WIDTH = 48;
   const EDGE_BUFFER = 4;
@@ -23,30 +33,40 @@ export default function Player({ sprite, minY, maxY, initialX, initialY, screenW
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
 
-  // Set initial X/Y after Game.tsx loads them
   useEffect(() => {
     setX(initialX);
     setY(initialY);
-  }, [initialX, initialY]);
+    setPosition({ x: initialX, y: initialY });
+  }, [initialX, initialY, setPosition]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       setX(prevX => {
-        if (e.key === 'a' || e.key === 'A') return Math.max(leftMin, prevX - SPEED);
-        if (e.key === 'd' || e.key === 'D') return Math.min(leftMax, prevX + SPEED);
-        return prevX;
+        const newX = e.key === 'a' || e.key === 'A'
+          ? Math.max(leftMin, prevX - SPEED)
+          : e.key === 'd' || e.key === 'D'
+          ? Math.min(leftMax, prevX + SPEED)
+          : prevX;
+
+        setPosition({ x: newX, y });
+        return newX;
       });
 
       setY(prevY => {
-        if (e.key === 'w' || e.key === 'W') return Math.max(minY, prevY - SPEED);
-        if (e.key === 's' || e.key === 'S') return Math.min(maxY, prevY + SPEED);
-        return prevY;
+        const newY = e.key === 'w' || e.key === 'W'
+          ? Math.max(minY, prevY - SPEED)
+          : e.key === 's' || e.key === 'S'
+          ? Math.min(maxY, prevY + SPEED)
+          : prevY;
+
+        setPosition({ x, y: newY });
+        return newY;
       });
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [minY, maxY, leftMin, leftMax]);
+  }, [minY, maxY, x, y, setPosition]);
 
   return (
     <img
@@ -57,8 +77,8 @@ export default function Player({ sprite, minY, maxY, initialX, initialY, screenW
         left: `${x}px`,
         top: `calc(50% + ${y}px)`,
         transform: 'translateY(-50%)',
-        width: `${SPRITE_WIDTH}px`,
-        height: `${SPRITE_WIDTH}px`,
+        width: `48px`,
+        height: `48px`,
         zIndex: 20,
       }}
     />
