@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Player from './Player';
 import Player2 from './Player2';
+import CPUPlayer from './CPUPlayer';
 import Track from './Track';
 import HUD from './HUD';
 import GameOverScreen from './GameOverScreen';
@@ -280,17 +281,49 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         stunned={p1Stunned}
       />
 
-      <Player2
-        sprite="/characters/toad.png"
-        minY={minY}
-        maxY={maxY}
-        initialX={player2StartX}
-        initialY={playerY}
-        screenWidth={screenWidth}
-        side="right"
-        setPosition={setP2Pos}
-        stunned={p2Stunned}
-      />
+      {mode === 'single' ? (
+        <CPUPlayer
+          sprite="/characters/toad.png"
+          minY={minY}
+          maxY={maxY}
+          initialX={player2StartX}
+          initialY={playerY}
+          screenWidth={screenWidth}
+          side="right"
+          setPosition={setP2Pos}
+          stunned={p2Stunned}
+          p1Pos={p1Pos}
+          p2Item={p2Item}
+          setP2Item={setP2Item}
+          p2Box={p2Box}
+          throwItem={(x, y, item) => {
+            setProjectiles(prev => [
+              ...prev,
+              {
+                x,
+                y,
+                type: item,
+                direction: 'left',
+                startX: x,
+                owner: 'p2',
+              },
+            ]);
+          }}
+        />
+      ) : (
+        <Player2
+          sprite="/characters/toad.png"
+          minY={minY}
+          maxY={maxY}
+          initialX={player2StartX}
+          initialY={playerY}
+          screenWidth={screenWidth}
+          side="right"
+          setPosition={setP2Pos}
+          stunned={p2Stunned}
+        />
+      )}
+
 
       {projectiles.map((p, i) => (
         <img
