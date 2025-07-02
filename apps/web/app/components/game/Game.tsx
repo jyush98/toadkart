@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Player from './Player';
+import Player2 from './Player2';
 import Track from './Track';
 import FinishLine from './FinishLine';
 import HUD from './HUD';
@@ -13,6 +14,9 @@ interface GameProps {
 }
 
 export default function Game({ mode, onReturnToMenu }: GameProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [screenWidth, setScreenWidth] = useState(800); // default until measured
   const [coins, setCoins] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [bgOffset, setBgOffset] = useState(0);
@@ -28,10 +32,18 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
   const finishX = 4000;
 
-  // Set clamping bounds on mount
+  const SPRITE_WIDTH = 48;
+  const EDGE_BUFFER = 4;
+
+  // Set clamping bounds and measure screen on mount
   useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      setScreenWidth(container.offsetWidth);
+    }
+
     const gameHeight = (50 * window.innerHeight) / 100;
-    const characterHeight = 48;
+    const characterHeight = SPRITE_WIDTH;
     const halfChar = characterHeight / 2;
 
     const trackTop = gameHeight * 0.8;
@@ -51,17 +63,15 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     const start = performance.now();
 
     const update = (time: number) => {
-      if (gameOver) return; // Freeze game once it's over
+      if (gameOver) return;
 
       setElapsed(Math.floor((time - start) / 1000));
       setBgOffset((prev) => (prev - 2) % 1000);
-      setScrollX((prev) => prev + 2);
 
-      const screenWidth = window.innerWidth;
       const playerX = 0.25 * screenWidth;
       const finishScreenX = finishX - scrollX;
 
-      const playerSize = 48;
+      const playerSize = SPRITE_WIDTH;
       const finishWidth = 32;
 
       const isColliding =
@@ -79,22 +89,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
     requestRef.current = requestAnimationFrame(update);
     return () => cancelAnimationFrame(requestRef.current);
-  }, [scrollX, elapsed, coins, gameOver]);
-
-  // Vertical movement
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameOver) return;
-      if (e.key === 'ArrowUp' || e.key === 'w') {
-        setPlayerY((prev) => Math.max(minY, Math.min(prev - 20, maxY)));
-      } else if (e.key === 'ArrowDown' || e.key === 's') {
-        setPlayerY((prev) => Math.max(minY, Math.min(prev + 20, maxY)));
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [minY, maxY, gameOver]);
+  }, [scrollX, elapsed, coins, gameOver, screenWidth]);
 
   const handlePlayAgain = () => {
     setCoins(0);
@@ -110,25 +105,43 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     if (onReturnToMenu) onReturnToMenu();
   };
 
+  // Compute X positions based on screen width
+  const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
+  const player2StartX = (screenWidth / 2 + EDGE_BUFFER + (screenWidth - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
+
   return (
-    <div className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden">
-      <Track bgOffset={bgOffset} />
-      {/* Player */}
+    <div
+      ref={containerRef}
+      className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden"
+    >
+      <Track />
+
       <Player
-        xPercent={25}
-        y={playerY}
         sprite="/characters/toadette.png"
+        minY={minY}
+        maxY={maxY}
+        initialX={player1StartX}
+        initialY={playerY}
+        screenWidth={screenWidth}
+        side="left"
       />
 
-      {/* Finish line (purple block) */}
+      <Player2
+        sprite="/characters/toad.png"
+        minY={minY}
+        maxY={maxY}
+        initialX={player2StartX}
+        initialY={playerY}
+        screenWidth={screenWidth}
+        side="right"
+      />
+
       {scrollX >= 3000 && !gameOver && (
         <FinishLine finishX={finishX} scrollX={scrollX} />
       )}
 
-      {/* HUD */}
       <HUD coins={coins} elapsed={elapsed} />
 
-      {/* Game Over Screen */}
       {gameOver && finalStats && (
         <GameOverScreen
           time={finalStats.time}
