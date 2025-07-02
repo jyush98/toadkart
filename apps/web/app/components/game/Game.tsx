@@ -239,6 +239,40 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         setPosition={setP2Pos}
       />
 
+      {/* Item Boxes */}
+      {p1Box && (
+        <img
+          src="/objects/item-box.png"
+          alt="Item Box"
+          className="absolute"
+          style={{
+            left: `${p1Box.x}px`,
+            top: `calc(50% + ${p1Box.y}px)`,
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '32px',
+            zIndex: 10,
+          }}
+        />
+      )}
+
+      {p2Box && (
+        <img
+          src="/objects/item-box.png"
+          alt="Item Box"
+          className="absolute"
+          style={{
+            left: `${p2Box.x}px`,
+            top: `calc(50% + ${p2Box.y}px)`,
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '32px',
+            zIndex: 10,
+          }}
+        />
+      )}
+
+
       {/* Projectiles */}
       {projectiles.map((p, i) => (
         <img
