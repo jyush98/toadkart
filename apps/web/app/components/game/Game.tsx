@@ -204,6 +204,11 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     setP2Box(null);
     setProjectiles([]);
     setGameOver(null);
+
+    // ✅ Re-focus the game container to capture keydown events again
+    setTimeout(() => {
+      containerRef.current?.focus();
+    }, 0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
