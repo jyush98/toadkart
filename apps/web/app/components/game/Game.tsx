@@ -5,13 +5,13 @@ import Player from './Player';
 import Player2 from './Player2';
 import Track from './Track';
 import HUD from './HUD';
+import GameOverScreen from './GameOverScreen';
 
 interface GameProps {
   mode: 'single' | 'multi';
   onReturnToMenu?: () => void;
 }
 
-// Generic collision entity
 interface Entity {
   x: number;
   y: number;
@@ -36,6 +36,10 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
   const SPRITE_WIDTH = 48;
   const EDGE_BUFFER = 4;
+
+  const [p1Hearts, setP1Hearts] = useState(3);
+  const [p2Hearts, setP2Hearts] = useState(3);
+  const [gameOver, setGameOver] = useState<null | 'p1' | 'p2'>(null);
 
   const [p1Item, setP1Item] = useState<null | 'banana' | 'shell'>(null);
   const [p2Item, setP2Item] = useState<null | 'banana' | 'shell'>(null);
@@ -75,7 +79,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     setPlayerY(max);
   }, []);
 
-  // Spawn item boxes every 7 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       if (!p1Box && !p1Item) {
@@ -94,7 +97,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     return () => clearInterval(interval);
   }, [p1Box, p2Box, p1Item, p2Item, screenWidth, minY, maxY]);
 
-  // Item pickup
   useEffect(() => {
     if (p1Box && !p1Item) {
       const dx = Math.abs(p1Box.x - p1Pos.x);
@@ -115,7 +117,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     }
   }, [p1Box, p2Box, p1Item, p2Item, p1Pos, p2Pos]);
 
-  // Projectile movement
   useEffect(() => {
     const interval = setInterval(() => {
       setProjectiles(prev =>
@@ -137,7 +138,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
                 : { ...p, x: newX };
             }
 
-            return p; // banana_static
+            return p;
           })
           .filter(Boolean) as typeof projectiles
       );
@@ -146,7 +147,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     return () => clearInterval(interval);
   }, [screenWidth]);
 
-  // Collision detection
   useEffect(() => {
     projectiles.forEach((p, i) => {
       const proj: Entity = { x: p.x, y: p.y, width: 32, height: 32 };
@@ -156,10 +156,12 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       if (p.type === 'shell') {
         if (p.direction === 'right' && isColliding(proj, player2)) {
           console.log('Shell hit Player 2!');
+          setP2Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (p.direction === 'left' && isColliding(proj, player1)) {
           console.log('Shell hit Player 1!');
+          setP1Hearts(h => Math.max(h - 1, 0));
           setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
       }
@@ -167,18 +169,29 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       if (p.type === 'banana_static') {
         if (isColliding(proj, player1)) {
           console.log('Player 1 slipped on banana!');
+          setP1Hearts(h => Math.max(h - 1, 0));
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
         if (isColliding(proj, player2)) {
           console.log('Player 2 slipped on banana!');
+          setP2Hearts(h => Math.max(h - 1, 0));
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
         }
       }
     });
   }, [projectiles, p1Pos, p2Pos]);
 
+  useEffect(() => {
+    if (p1Hearts <= 0) setGameOver('p2');
+    if (p2Hearts <= 0) setGameOver('p1');
+  }, [p1Hearts, p2Hearts]);
+
   const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
   const player2StartX = (screenWidth / 2 + EDGE_BUFFER + (screenWidth - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (gameOver) return;
+
     if (e.key === 'f' && p1Item) {
       setProjectiles(prev => [
         ...prev,
@@ -215,6 +228,8 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       onKeyDown={handleKeyDown}
       className="relative w-full h-full rounded-xl border border-white/20 overflow-hidden outline-none"
     >
+      {gameOver && <GameOverScreen winner={gameOver} onReturnToMenu={onReturnToMenu} />}
+
       <Track />
 
       <Player
@@ -239,40 +254,6 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         setPosition={setP2Pos}
       />
 
-      {/* Item Boxes */}
-      {p1Box && (
-        <img
-          src="/objects/item-box.png"
-          alt="Item Box"
-          className="absolute"
-          style={{
-            left: `${p1Box.x}px`,
-            top: `calc(50% + ${p1Box.y}px)`,
-            transform: 'translateY(-50%)',
-            width: '32px',
-            height: '32px',
-            zIndex: 10,
-          }}
-        />
-      )}
-
-      {p2Box && (
-        <img
-          src="/objects/item-box.png"
-          alt="Item Box"
-          className="absolute"
-          style={{
-            left: `${p2Box.x}px`,
-            top: `calc(50% + ${p2Box.y}px)`,
-            transform: 'translateY(-50%)',
-            width: '32px',
-            height: '32px',
-            zIndex: 10,
-          }}
-        />
-      )}
-
-
       {/* Projectiles */}
       {projectiles.map((p, i) => (
         <img
@@ -294,7 +275,39 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         />
       ))}
 
-      <HUD p1Hearts={3} p2Hearts={3} p1Item={p1Item} p2Item={p2Item} />
+      {/* Item Boxes */}
+      {p1Box && (
+        <img
+          src="/objects/item-box.png"
+          alt="Item Box"
+          className="absolute"
+          style={{
+            left: `${p1Box.x}px`,
+            top: `calc(50% + ${p1Box.y}px)`,
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '32px',
+            zIndex: 10,
+          }}
+        />
+      )}
+      {p2Box && (
+        <img
+          src="/objects/item-box.png"
+          alt="Item Box"
+          className="absolute"
+          style={{
+            left: `${p2Box.x}px`,
+            top: `calc(50% + ${p2Box.y}px)`,
+            transform: 'translateY(-50%)',
+            width: '32px',
+            height: '32px',
+            zIndex: 10,
+          }}
+        />
+      )}
+
+      <HUD p1Hearts={p1Hearts} p2Hearts={p2Hearts} p1Item={p1Item} p2Item={p2Item} />
     </div>
   );
 }
