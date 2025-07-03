@@ -7,10 +7,13 @@ import CPUPlayer from './CPUPlayer';
 import Track from './Track';
 import HUD from './HUD';
 import GameOverScreen from './GameOverScreen';
+import { useCharacterStore } from '../../store/useCharacterStore';
 
 interface GameProps {
   mode: 'single' | 'multi';
   onReturnToMenu?: () => void;
+  p1Char: string;
+  p2Char: string;
 }
 
 interface Entity {
@@ -27,7 +30,7 @@ function isColliding(a: Entity, b: Entity): boolean {
   );
 }
 
-export default function Game({ mode, onReturnToMenu }: GameProps) {
+export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [screenWidth, setScreenWidth] = useState(800);
@@ -52,6 +55,8 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
   const [p2Box, setP2Box] = useState<{ x: number; y: number } | null>(null);
   const [p1Pos, setP1Pos] = useState({ x: 0, y: 0 });
   const [p2Pos, setP2Pos] = useState({ x: 0, y: 0 });
+
+  const { unlockNextCharacter } = useCharacterStore.getState();
 
   const [projectiles, setProjectiles] = useState<
     {
@@ -196,11 +201,27 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
     if (p1Hearts <= 0) {
       setGameOver('p2');
       setP2Wins(w => w + 1);
+
+      if (p2Hearts === 3) {
+        const newlyUnlocked = unlockNextCharacter();
+        if (newlyUnlocked) {
+          alert(`${newlyUnlocked.replace('.png', '')} unlocked!`);
+        }
+      }
     }
+
     if (p2Hearts <= 0) {
       setGameOver('p1');
       setP1Wins(w => w + 1);
+
+      if (p1Hearts === 3) {
+        const newlyUnlocked = unlockNextCharacter();
+        if (newlyUnlocked) {
+          alert(`${newlyUnlocked.replace('.png', '')} unlocked!`);
+        }
+      }
     }
+
   }, [p1Hearts, p2Hearts]);
 
   const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
@@ -270,7 +291,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
       <Track />
 
       <Player
-        sprite="/characters/toadette.png"
+        sprite={`/characters/${p1Char}`}
         minY={minY}
         maxY={maxY}
         initialX={player1StartX}
@@ -283,7 +304,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
 
       {mode === 'single' ? (
         <CPUPlayer
-          sprite="/characters/toad.png"
+          sprite={`/characters/${p2Char}`}
           minY={minY}
           maxY={maxY}
           initialX={player2StartX}
@@ -312,7 +333,7 @@ export default function Game({ mode, onReturnToMenu }: GameProps) {
         />
       ) : (
         <Player2
-          sprite="/characters/toad.png"
+          sprite={`/characters/${p2Char}`}
           minY={minY}
           maxY={maxY}
           initialX={player2StartX}
