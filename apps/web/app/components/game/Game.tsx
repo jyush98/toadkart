@@ -201,6 +201,13 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   }, [projectiles, p1Pos, p2Pos]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      container.focus();
+    }
+  }, []);
+
+  useEffect(() => {
     if (p1Hearts <= 0) {
       setGameOver('p2');
       setP2Wins(w => w + 1);
@@ -240,6 +247,10 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
     setProjectiles([]);
     setGameOver(null);
     setResetTrigger(prev => prev + 1);
+
+    setTimeout(() => {
+      containerRef.current?.focus(); // Ensure keypresses work again
+    }, 50); // Slight delay to allow DOM to settle
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
