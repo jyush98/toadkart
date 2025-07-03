@@ -2,8 +2,6 @@
 
 ToadKart is a retro-style interactive game inspired by Mario Kart's balloon battle mode. Built as part of the Unitbase Founding Engineer take-home project, it demonstrates full-stack architecture, thoughtful gameplay mechanics, and a fun, intuitive UX.
 
-![Gameplay Preview](./screenshot.png)
-
 ---
 
 ## 🎮 Gameplay Overview
