@@ -8,6 +8,12 @@ import Track from './Track';
 import HUD from './HUD';
 import GameOverScreen from './GameOverScreen';
 import { useCharacterStore } from '../../store/useCharacterStore';
+import { Projectile, Entity } from './types';
+import { isColliding } from './utils/collision';
+import { updateProjectiles } from './utils/updateProjectiles';
+import { stunPlayer } from './utils/stunPlayer';
+import { SPRITE_WIDTH, EDGE_BUFFER } from './utils/constants';
+import ProjectileSprite from './Projectile';
 
 interface GameProps {
   mode: 'single' | 'multi';
@@ -16,31 +22,12 @@ interface GameProps {
   p2Char: string;
 }
 
-interface Entity {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function isColliding(a: Entity, b: Entity): boolean {
-  return (
-    Math.abs(a.x - b.x) < (a.width + b.width) / 2 &&
-    Math.abs(a.y - b.y) < (a.height + b.height) / 2
-  );
-}
-
 export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-
   const [screenWidth, setScreenWidth] = useState(800);
   const [minY, setMinY] = useState(0);
   const [maxY, setMaxY] = useState(0);
   const [playerY, setPlayerY] = useState(0);
-
-  const SPRITE_WIDTH = 48;
-  const EDGE_BUFFER = 4;
-
   const [p1Hearts, setP1Hearts] = useState(3);
   const [p2Hearts, setP2Hearts] = useState(3);
   const [p1Stunned, setP1Stunned] = useState(false);
@@ -48,29 +35,15 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   const [gameOver, setGameOver] = useState<null | 'p1' | 'p2'>(null);
   const [p1Wins, setP1Wins] = useState(0);
   const [p2Wins, setP2Wins] = useState(0);
-
   const [p1Item, setP1Item] = useState<null | 'banana' | 'shell'>(null);
   const [p2Item, setP2Item] = useState<null | 'banana' | 'shell'>(null);
   const [p1Box, setP1Box] = useState<{ x: number; y: number } | null>(null);
   const [p2Box, setP2Box] = useState<{ x: number; y: number } | null>(null);
   const [p1Pos, setP1Pos] = useState({ x: 0, y: 0 });
   const [p2Pos, setP2Pos] = useState({ x: 0, y: 0 });
-
-  const [resetTrigger, setResetTrigger] = useState(0); // NEW
-
-
+  const [resetTrigger, setResetTrigger] = useState(0);
   const { unlockNextCharacter } = useCharacterStore.getState();
-
-  const [projectiles, setProjectiles] = useState<
-    {
-      x: number;
-      y: number;
-      type: 'banana' | 'shell' | 'banana_static';
-      direction: 'left' | 'right';
-      startX?: number;
-      owner: 'p1' | 'p2';
-    }[]
-  >([]);
+  const [projectiles, setProjectiles] = useState<Projectile[]>([]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -95,19 +68,58 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
 
   useEffect(() => {
     const interval = setInterval(() => {
+      setProjectiles(prev => updateProjectiles(prev, screenWidth));
+    }, 50);
+    return () => clearInterval(interval);
+  }, [screenWidth]);
+
+  useEffect(() => {
+    projectiles.forEach((p, i) => {
+      const proj: Entity = { x: p.x, y: p.y, width: 24, height: 24 };
+      const player1: Entity = { ...p1Pos, width: 48, height: 48 };
+      const player2: Entity = { ...p2Pos, width: 48, height: 48 };
+
+      if (p.type === 'shell') {
+        if (p.direction === 'right' && isColliding(proj, player2)) {
+          setP2Hearts(h => Math.max(h - 1, 0));
+          stunPlayer(setP2Stunned);
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
+        }
+        if (p.direction === 'left' && isColliding(proj, player1)) {
+          setP1Hearts(h => Math.max(h - 1, 0));
+          stunPlayer(setP1Stunned);
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
+        }
+      }
+
+      if (p.type === 'banana' || p.type === 'banana_static') {
+        if (p.owner !== 'p1' && isColliding(proj, player1)) {
+          setP1Hearts(h => Math.max(h - 1, 0));
+          stunPlayer(setP1Stunned);
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
+        }
+        if (p.owner !== 'p2' && isColliding(proj, player2)) {
+          setP2Hearts(h => Math.max(h - 1, 0));
+          stunPlayer(setP2Stunned);
+          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
+        }
+      }
+    });
+  }, [projectiles, p1Pos, p2Pos]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
       if (!p1Box && !p1Item) {
         const x = Math.floor(Math.random() * (screenWidth / 2 - 64));
         const y = Math.floor(Math.random() * (maxY - minY)) + minY;
         setP1Box({ x, y });
       }
-
       if (!p2Box && !p2Item) {
         const x = Math.floor(Math.random() * (screenWidth / 2 - 64)) + screenWidth / 2;
         const y = Math.floor(Math.random() * (maxY - minY)) + minY;
         setP2Box({ x, y });
       }
-    }, 3000); // every 3 seconds
-
+    }, 3000);
     return () => clearInterval(interval);
   }, [p1Box, p2Box, p1Item, p2Item, screenWidth, minY, maxY]);
 
@@ -132,107 +144,23 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   }, [p1Box, p2Box, p1Item, p2Item, p1Pos, p2Pos]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProjectiles(prev =>
-        prev
-          .map(p => {
-            if (p.type === 'shell') {
-              const SHELL_SPEED = 36;
-              const newX = p.direction === 'right' ? p.x + SHELL_SPEED : p.x - SHELL_SPEED;
-              const isOffscreen = newX < 0 || newX > screenWidth;
-              return isOffscreen ? null : { ...p, x: newX };
-            }
-
-            if (p.type === 'banana') {
-              const BANANA_SPEED = 30;
-              const dx = p.direction === 'right' ? BANANA_SPEED : -1 * BANANA_SPEED;
-              const newX = p.x + dx;
-              const maxDist = screenWidth * 0.4;
-              const traveled = Math.abs((p.startX ?? p.x) - newX);
-              return traveled >= maxDist
-                ? { ...p, type: 'banana_static', x: newX }
-                : { ...p, x: newX };
-            }
-
-            return p;
-          })
-          .filter(Boolean) as typeof projectiles
-      );
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [screenWidth]);
-
-  useEffect(() => {
-    projectiles.forEach((p, i) => {
-      const proj: Entity = { x: p.x, y: p.y, width: 24, height: 24 };
-      const player1: Entity = { ...p1Pos, width: 48, height: 48 };
-      const player2: Entity = { ...p2Pos, width: 48, height: 48 };
-
-      if (p.type === 'shell') {
-        if (p.direction === 'right' && isColliding(proj, player2)) {
-          setP2Hearts(h => Math.max(h - 1, 0));
-          setP2Stunned(true);
-          setTimeout(() => setP2Stunned(false), 1000);
-          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
-        }
-        if (p.direction === 'left' && isColliding(proj, player1)) {
-          setP1Hearts(h => Math.max(h - 1, 0));
-          setP1Stunned(true);
-          setTimeout(() => setP1Stunned(false), 1000);
-          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
-        }
-      }
-
-      if (p.type === 'banana' || p.type === 'banana_static') {
-        if (p.owner !== 'p1' && isColliding(proj, player1)) {
-          setP1Hearts(h => Math.max(h - 1, 0));
-          setP1Stunned(true);
-          setTimeout(() => setP1Stunned(false), 1000);
-          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
-        }
-        if (p.owner !== 'p2' && isColliding(proj, player2)) {
-          setP2Hearts(h => Math.max(h - 1, 0));
-          setP2Stunned(true);
-          setTimeout(() => setP2Stunned(false), 1000);
-          setProjectiles(prev => prev.filter((_, idx) => idx !== i));
-        }
-      }
-    });
-  }, [projectiles, p1Pos, p2Pos]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      container.focus();
-    }
-  }, []);
-
-  useEffect(() => {
     if (p1Hearts <= 0) {
       setGameOver('p2');
       setP2Wins(w => w + 1);
-
       if (p2Hearts === 3) {
-        const newlyUnlocked = unlockNextCharacter();
-        if (newlyUnlocked) {
-          alert(`${newlyUnlocked.replace('.png', '')} unlocked!`);
-        }
+        const unlocked = unlockNextCharacter();
+        if (unlocked) alert(`${unlocked.replace('.png', '')} unlocked!`);
       }
     }
 
     if (p2Hearts <= 0) {
       setGameOver('p1');
       setP1Wins(w => w + 1);
-
       if (p1Hearts === 3) {
-        const newlyUnlocked = unlockNextCharacter();
-        if (newlyUnlocked) {
-          alert(`${newlyUnlocked.replace('.png', '')} unlocked!`);
-        }
+        const unlocked = unlockNextCharacter();
+        if (unlocked) alert(`${unlocked.replace('.png', '')} unlocked!`);
       }
     }
-
   }, [p1Hearts, p2Hearts]);
 
   const player1StartX = (0 + (screenWidth / 2 - SPRITE_WIDTH - EDGE_BUFFER)) / 2;
@@ -248,10 +176,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
     setProjectiles([]);
     setGameOver(null);
     setResetTrigger(prev => prev + 1);
-
-    setTimeout(() => {
-      containerRef.current?.focus(); // Ensure keypresses work again
-    }, 50); // Slight delay to allow DOM to settle
+    setTimeout(() => containerRef.current?.focus(), 50);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -363,21 +288,8 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
         />
       )}
 
-
       {projectiles.map((p, i) => (
-        <img
-          key={i}
-          src={p.type === 'shell' ? '/objects/green-shell.webp' : '/objects/banana.png'}
-          className="absolute"
-          style={{
-            left: `${p.x}px`,
-            top: `calc(50% + ${p.y}px)`,
-            transform: 'translateY(-50%)',
-            width: p.type === 'banana' || p.type === 'banana_static' ? '48px' : '24px',
-            height: p.type === 'banana' || p.type === 'banana_static' ? '48px' : '24px',
-            zIndex: 15,
-          }}
-        />
+        <ProjectileSprite key={i} projectile={p} />
       ))}
 
       {p1Box && (
