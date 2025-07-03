@@ -44,6 +44,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   const [resetTrigger, setResetTrigger] = useState(0);
   const { unlockNextCharacter } = useCharacterStore.getState();
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -60,7 +61,6 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
     const max = trackBottom - halfChar - gameHeight / 2;
     const extraVerticalRange = 40;
     const min = Math.max(-gameHeight / 2, trackTop + halfChar - gameHeight / 2 - extraVerticalRange);
-
     setMinY(min);
     setMaxY(max);
     setPlayerY(max);
@@ -180,7 +180,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (gameOver) return;
+    if (gameOver || isPaused) return;
 
     if (e.key === 'f' && p1Item && !p1Stunned) {
       setProjectiles(prev => [
@@ -212,6 +212,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
       setP2Item(null);
     }
   };
+
 
   return (
     <div
@@ -324,10 +325,19 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
       )}
 
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-sm z-50">
-        Player 1 Wins: {p1Wins} &nbsp;&nbsp;|&nbsp;&nbsp; Player 2 Wins: {p2Wins}
+        Player 1 Wins: {p1Wins} &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; Player 2 Wins: {p2Wins}
       </div>
 
-      <HUD p1Hearts={p1Hearts} p2Hearts={p2Hearts} p1Item={p1Item} p2Item={p2Item} />
+      <HUD
+        p1Hearts={p1Hearts}
+        p2Hearts={p2Hearts}
+        p1Item={p1Item}
+        p2Item={p2Item}
+        isPaused={isPaused}
+        setIsPaused={setIsPaused}
+        onPauseReturnToMenu={onReturnToMenu}
+      />
+
     </div>
   );
 }
