@@ -16,7 +16,7 @@ export default function HUD({ p1Hearts, p2Hearts, p1Item, p2Item }: HUDProps) {
   const renderItem = (item: 'banana' | 'shell' | null) => {
     if (item === 'banana') return '🍌';
     if (item === 'shell') return '🟢';
-    return '🎁';
+    return '❓';
   };
 
   return (

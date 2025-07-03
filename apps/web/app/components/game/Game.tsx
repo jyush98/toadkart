@@ -137,14 +137,15 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
         prev
           .map(p => {
             if (p.type === 'shell') {
-              const SHELL_SPEED = 24;
+              const SHELL_SPEED = 36;
               const newX = p.direction === 'right' ? p.x + SHELL_SPEED : p.x - SHELL_SPEED;
               const isOffscreen = newX < 0 || newX > screenWidth;
               return isOffscreen ? null : { ...p, x: newX };
             }
 
             if (p.type === 'banana') {
-              const dx = p.direction === 'right' ? 8 : -8;
+              const BANANA_SPEED = 30;
+              const dx = p.direction === 'right' ? BANANA_SPEED : -1 * BANANA_SPEED;
               const newX = p.x + dx;
               const maxDist = screenWidth * 0.4;
               const traveled = Math.abs((p.startX ?? p.x) - newX);
@@ -164,7 +165,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
 
   useEffect(() => {
     projectiles.forEach((p, i) => {
-      const proj: Entity = { x: p.x, y: p.y, width: 32, height: 32 };
+      const proj: Entity = { x: p.x, y: p.y, width: 24, height: 24 };
       const player1: Entity = { ...p1Pos, width: 48, height: 48 };
       const player2: Entity = { ...p2Pos, width: 48, height: 48 };
 
@@ -372,8 +373,8 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
             left: `${p.x}px`,
             top: `calc(50% + ${p.y}px)`,
             transform: 'translateY(-50%)',
-            width: '32px',
-            height: '32px',
+            width: p.type === 'banana' || p.type === 'banana_static' ? '48px' : '24px',
+            height: p.type === 'banana' || p.type === 'banana_static' ? '48px' : '24px',
             zIndex: 15,
           }}
         />

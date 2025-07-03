@@ -29,12 +29,12 @@ export default function Screen() {
   };
 
   return (
-    <div className="w-screen h-screen bg-black flex items-center justify-center">
+    <div className="w-screen h-full bg-black flex items-center justify-center">
       <div className="relative w-[90vw] h-[50vh] border-2 border-white rounded-md overflow-hidden font-mono text-white">
         {view === 'menu' && (
           <div className="flex flex-col items-center justify-center h-full">
             <h1 className="text-4xl mb-8">ToadKart</h1>
-            <div className="flex gap-8">
+            <div className="flex gap-8 pt-20">
               <button
                 className="w-48 h-24 border-2 border-white bg-[#222] hover:bg-[#333] transition"
                 onClick={() => handleModeSelect('single')}
