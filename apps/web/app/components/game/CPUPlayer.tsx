@@ -1,3 +1,4 @@
+// app/components/game/CPUPlayer.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ interface CPUPlayerProps {
   side: 'left' | 'right';
   setPosition: (pos: { x: number; y: number }) => void;
   stunned?: boolean;
+  resetTrigger?: number; // ✅ NEW
 
   p1Pos: { x: number; y: number };
   p2Item: 'banana' | 'shell' | null;
@@ -30,6 +32,7 @@ export default function CPUPlayer({
   side,
   setPosition,
   stunned = false,
+  resetTrigger, // ✅ NEW
   p1Pos,
   p2Item,
   setP2Item,
@@ -46,10 +49,12 @@ export default function CPUPlayer({
   const [x, setX] = useState(initialX);
   const [y, setY] = useState(initialY);
 
+  // ✅ Reset position on trigger
   useEffect(() => {
     setX(initialX);
     setY(initialY);
-  }, [initialX, initialY]);
+    setPosition({ x: initialX, y: initialY });
+  }, [initialX, initialY, resetTrigger, setPosition]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -79,7 +84,6 @@ export default function CPUPlayer({
     return () => clearInterval(interval);
   }, [x, y, p1Pos, p2Box, minY, maxY, rightMin, rightMax, stunned, p2Item, setP2Item]);
 
-  // Throw item on cooldown when Player 1 is horizontally aligned
   useEffect(() => {
     if (!p2Item || stunned) return;
 
@@ -89,7 +93,7 @@ export default function CPUPlayer({
         throwItem(x - 48, y, p2Item); // throw left toward Player 1
         setP2Item(null);
       }
-    }, 1500 + Math.random() * 1000); // 1.5–2.5s delay
+    }, 1500 + Math.random() * 1000);
 
     return () => clearTimeout(timeout);
   }, [p2Item, stunned, y, p1Pos.y, x, setP2Item, throwItem]);

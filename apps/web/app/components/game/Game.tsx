@@ -56,6 +56,9 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
   const [p1Pos, setP1Pos] = useState({ x: 0, y: 0 });
   const [p2Pos, setP2Pos] = useState({ x: 0, y: 0 });
 
+  const [resetTrigger, setResetTrigger] = useState(0); // NEW
+
+
   const { unlockNextCharacter } = useCharacterStore.getState();
 
   const [projectiles, setProjectiles] = useState<
@@ -236,7 +239,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
     setP2Box(null);
     setProjectiles([]);
     setGameOver(null);
-    setTimeout(() => containerRef.current?.focus(), 0);
+    setResetTrigger(prev => prev + 1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -300,6 +303,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
         side="left"
         setPosition={setP1Pos}
         stunned={p1Stunned}
+        resetTrigger={resetTrigger}
       />
 
       {mode === 'single' ? (
@@ -317,6 +321,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
           p2Item={p2Item}
           setP2Item={setP2Item}
           p2Box={p2Box}
+          resetTrigger={resetTrigger}
           throwItem={(x, y, item) => {
             setProjectiles(prev => [
               ...prev,
@@ -342,6 +347,7 @@ export default function Game({ mode, onReturnToMenu, p1Char, p2Char }: GameProps
           side="right"
           setPosition={setP2Pos}
           stunned={p2Stunned}
+          resetTrigger={resetTrigger}
         />
       )}
 
